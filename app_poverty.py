@@ -9,7 +9,7 @@ app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 app.layout = dbc.Container([
     dbc.Row([
         dbc.Col([
-            html.H1('Poverty And Equity Database', className='display-1'),
+            html.H1('Poverty And Equity Database'),
             html.H2('The World Bank')
         ])
     ]),
