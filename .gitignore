@@ -9,6 +9,9 @@ venv/
 .venv/
 .env
 
+*ex*.ipynb
+PlotlyDash.pdf
+
 # Dash/Plotly
 .plotly/
 .plotly-credentials

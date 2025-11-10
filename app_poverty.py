@@ -1,11 +1,23 @@
-import dash
-from dash import html, dcc, Output, Input
+from dash import Dash, callback, html, dcc, Output, Input
 import dash_bootstrap_components as dbc
 import pandas as pd
+import plotly.graph_objects as go
 
+
+# Данные из файлов
 poverty_df = pd.read_csv('data/PovStatsData.csv')
+poverty_data = pd.read_csv('data/PovStatsData.csv')
+regions = ['East Asia & Pacific', 'Europe & Central Asia', 'Fragile and conflict affected situations', 'High income', 
+    'IDA countries classified as fragile situations', 'IDA total', 'Latin America & Caribbean', 
+    'Low & middle income', 'Low income', 'Lower middle income', 'Middle East & North Africa', 'Middle income', 
+    'South Asia', 'Sub-Saharan Africa', 'Upper middle income', 'World'
+]
+population_df = poverty_data[~poverty_data['Country Name'].isin(regions) & poverty_data['Indicator Name'].eq('Population, total')]
 
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+
+
+# приложение
+app = Dash(__name__, external_stylesheets=[dbc.themes.SKETCHY])
 app.layout = dbc.Container([
     dbc.Row([
         dbc.Col([
@@ -21,6 +33,18 @@ app.layout = dbc.Container([
             html.Div(id='report')
         ])
     ]),
+    dbc.Row(
+        dbc.Col([
+            dcc.Dropdown(
+                id='year_dropdown',
+                options=[{'label': year, 'value': str(year)} for year in range(1974, 2019)],
+                value='2010',
+            ),
+            html.Div(
+                dcc.Graph(id='population_chart')
+            )
+        ])
+    ),
     html.Br(),
     dbc.Row([
         dbc.Col([
@@ -47,13 +71,33 @@ app.layout = dbc.Container([
     ])
 ])
 
-@app.callback(Output('report', 'children'), Input('country', 'value'))
+@callback(Output('report', 'children'), Input('country', 'value'))
 def update_country(country):
     if country is None:
         population = poverty_df[poverty_df['Country Name'].eq("World")]['2010'].sum()
         return html.H3(f'The population of World in 2010 was {population:,.0f}')
     population = poverty_df[poverty_df['Country Name'].eq(country)]['2010'].sum()
     return html.H3(f'The population of {country} in 2010 was {population:,.0f}')
+
+
+@callback(
+    Output('population_chart', 'figure'),
+    Input('year_dropdown', 'value')
+)
+def plot_countries_by_population(year):
+    year_df = population_df[['Country Name', year]].sort_values(by=year, ascending=False).head(20)
+
+    fig = go.Figure()
+    fig.add_bar(
+        x=year_df['Country Name'],
+        y=year_df[year],
+    )
+    fig.update_layout(
+        title=f'Top twelwe countrues by population = {year}',
+        template='none',
+    )
+    return fig
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=8501)
