@@ -1,7 +1,9 @@
-from dash import Dash, callback, html, dcc, Output, Input
+from dash import Dash, callback, html, dcc, Output, Input, no_update
+from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
 import pandas as pd
 import plotly.graph_objects as go
+import plotly.express as px
 
 
 # Данные из файлов
@@ -13,7 +15,9 @@ regions = ['East Asia & Pacific', 'Europe & Central Asia', 'Fragile and conflict
     'South Asia', 'Sub-Saharan Africa', 'Upper middle income', 'World'
 ]
 population_df = poverty_data[~poverty_data['Country Name'].isin(regions) & poverty_data['Indicator Name'].eq('Population, total')]
-
+poverty = pd.read_csv('data/poverty.csv', low_memory=False)
+gini = 'GINI index (World Bank estimate)'
+gini_df = poverty[poverty[gini].notna()]
 
 
 # приложение
@@ -45,6 +49,23 @@ app.layout = dbc.Container([
             )
         ])
     ),
+    html.Br(),
+    dbc.Row([
+        dbc.Col([
+            dcc.Dropdown(
+                id='gini_year_dropdown',
+                options=[{'label': x, 'value': x} for x in gini_df['year'].sort_values().unique()]
+            ),
+            html.Div(dcc.Graph(id='gini_year_barchart'))
+        ]),
+        dbc.Col([
+            dcc.Dropdown(
+                id='gini_country_dropdown',
+                options=[{'label': x, 'value': x} for x in gini_df['Country Name'].sort_values().unique()],
+            ),
+            html.Div(dcc.Graph(id='gini_country_barchart'))
+        ])
+    ]),
     html.Br(),
     dbc.Row([
         dbc.Col([
@@ -98,6 +119,29 @@ def plot_countries_by_population(year):
     )
     return fig
 
+@callback(
+    Output('gini_year_barchart', 'figure'),
+    Output('gini_country_barchart', 'figure'),
+    Input('gini_year_dropdown', 'value'),
+    Input('gini_country_dropdown', 'value'),
+)
+def update_plot(year, country):
+    if not year and not country:
+        raise PreventUpdate
+    
+    if year:
+        df_year = gini_df[gini_df['year'].eq(year)].dropna(subset=gini).sort_values(by=gini)
+        fig_year = px.bar(df_year, x=gini, y='Country Name', title=gini + ' ' + str(year))
+    else:
+        fig_year = no_update
+    
+    if country:
+        df_country = gini_df[gini_df['Country Name'].eq(country)].dropna(subset=gini).sort_values(by='year')
+        fig_country = px.bar(df_country, y=gini, x='year', title=' - '.join([gini, country]))
+    else:
+        fig_country = no_update
+    
+    return fig_year, fig_country
 
 if __name__ == '__main__':
     app.run(debug=True, port=8501)
